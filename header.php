@@ -27,20 +27,41 @@ if (isset($_SESSION['session_idutilisateur'])) {
   </head>
   <body>
     <!--<div class="ui inverted fixed menu">-->
-    <!-- <div class="ui left fixed vertical menu">
+
+    <!--<div class="ui left fixed vertical menu, ui left vertical menu app-sidebar">
+
       <div class="item"><a href="index.php">Budget Financier</a></div>
       <?php if (!isset($session_idutilisateur)) { ?>
+        <a class="item "href="inscription.php">Inscription</a>
       <?php } else { ?>
         <a class="item">Dashboard</a>
         <a class="item">Transaction</a>
-        <a class="item">Debt Centre</a>
+        <a class="item">Debt Center</a>
         <a class="item">Contacts</a>
         <a class="item">Reports</a>
         <a class="item">User</a>
         <a class="item">Sign out</a> 
       <?php } ?>
-    </div>
-    <div class="ui main text container">       
+
+    </div>-->
+    <div class="app-layout">
+        <div class="ui inverted fixed menu">
+            <div class="item"><a href="index.php"><strong>Budget Financier</strong></a></div>
+            <?php if (!isset($session_idutilisateur)) { ?>
+              <a class="item" href="inscription.php">Inscription</a>
+            <?php } else { ?>
+              <a class="item">Dashboard</a>
+              <a class="item">Transaction</a>
+              <a class="item">Debt Center</a>
+              <a class="item">Contacts</a>
+              <a class="item">Reports</a>
+              <a class="item">User</a>
+              <a class="item">Sign out</a>
+            <?php } ?>
+          </div>
+    <div class="app-content">
+        <div class="ui main text container">
+
         
 <!--       
 <div class="ui left fixed vertical menu">
