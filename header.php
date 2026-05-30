@@ -27,7 +27,7 @@ if (isset($_SESSION['session_idutilisateur'])) {
   </head>
   <body>
     <!--<div class="ui inverted fixed menu">-->
-    <div class="ui left fixed vertical menu">
+    <!-- <div class="ui left fixed vertical menu">
       <div class="item"><a href="index.php">Budget Financier</a></div>
       <?php if (!isset($session_idutilisateur)) { ?>
       <?php } else { ?>
@@ -37,11 +37,10 @@ if (isset($_SESSION['session_idutilisateur'])) {
         <a class="item">Contacts</a>
         <a class="item">Reports</a>
         <a class="item">User</a>
-        <a class="item">Sign out</a>
+        <a class="item">Sign out</a> 
       <?php } ?>
     </div>
-    <div class="ui main text container">
-        
+    <div class="ui main text container">       
         
 <!--       
 <div class="ui left fixed vertical menu">

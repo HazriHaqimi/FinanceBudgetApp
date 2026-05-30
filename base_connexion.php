@@ -6,7 +6,7 @@
 error_reporting(0); // Désactivation du rapport d'erreurs de PHP
 mysqli_report(MYSQLI_REPORT_OFF); // Désactivation du rapport d'erreur mysqli
 // Connexion à la base de données cuicui du serveur localhost
-$connexion = mysqli_connect("localhost", "root", "", "cuicui");
+$connexion = mysqli_connect("localhost", "root", "", "budget_financier");
 if ($connexion) {
   // Changement du jeu de caractères pour utf-8 
   mysqli_set_charset($connexion, "utf8");
