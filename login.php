@@ -21,15 +21,15 @@ if (isset($_POST['connecter'])) {
     //***************************
     // Clic sur le bouton "Se connecter" de valeur name="connecter"
     // Traitement du formulaire
-    $pseudo = htmlspecialchars($_POST['pseudo']);
-    $passe = trim($_POST['passe']);
+    $username = htmlspecialchars($_POST['username']);
+    $password = trim($_POST['password_hash']);
 
     // Vérification de toutes les valeurs saisies
-    if (empty($pseudo)) {
+    if (empty($username)) {
         $message_erreur .= "Le champ Login est obligatoire<br>\n";
     }
 
-    if (empty($passe)) {
+    if (empty($password)) {
         $message_erreur .= "Le mot de passe est obligatoire<br>\n";
     }
 
@@ -41,7 +41,7 @@ if (isset($_POST['connecter'])) {
         // - que le mot de passe saisi est valide
         //
         // Vérification que le pseudo existe dans la table
-        $requete = "select * from utilisateur where Pseudo = '$pseudo';";
+        $requete = "select * from users where username = '$username';";
         // Exécution de la requête
         $resultat = mysqli_query($connexion, $requete);
         if ($resultat) {
@@ -53,7 +53,10 @@ if (isset($_POST['connecter'])) {
                 $ligne = mysqli_fetch_assoc($resultat);
                 // Vérification que le mot de passe saisi correpond au mot de passe 
                 // chiffré récupéré dans la base de données
-                if (password_verify($passe, $ligne['Password'])) {
+                if (password_verify($password, $ligne['password_hash'])) {
+                
+                //temporary
+                //if ($password === $ligne['password_hash']) {
                     // Le login et le mot de passe saisis sont valides
                     // -> Initialisation des variables de session
                     // 
@@ -64,13 +67,12 @@ if (isset($_POST['connecter'])) {
 
                     // Enregistrement de l'identifiant, du pseudo, du nom et du prénom
                     // de l'utilisateur authentifié dans des variables de session
-                    $_SESSION['session_idutilisateur'] = $ligne['IdUtilisateur'];
-                    $_SESSION['session_pseudo'] = $ligne['Pseudo'];
-                    $_SESSION['session_nom'] = $ligne['Nom'];
-                    $_SESSION['session_prenom'] = $ligne['Prenom'];
+                    $_SESSION['session_user_id'] = $ligne['user_id'];
+                    $_SESSION['session_username'] = $ligne['username'];
+                    $_SESSION['session_name'] = $ligne['name'];
 
                     // Redirection vers la page index.php
-                    header('Location: index.php');
+                    header('Location: dashboard.php');
 
                     // Fin du script si la redirection n'a pas pu se faire
                     exit();
@@ -100,35 +102,25 @@ require 'header.php';
 require 'messages_application.php';
 
 // S'il y a eu des erreurs ou si aucun appui sur le bouton "Se connecter"
-if (!empty($message_erreur) || !isset($_POST['connecter'])) {
-    ?>
-    <!-- **************************************** -->
-    <!-- Affichage du formulaire                  -->
+if (!empty($message_erreur) || !isset($_POST['connecter'])) { ?>
+
     <div class="ui segment">     
         <h1 class="ui header">Log In</h1>
         <form class="ui form" method="POST" action="">
             <div class="field">
                 <label for="edit-pseudo">Username</label>
-                <input type="text" id="edit-pseudo" name="pseudo" placeholder="Username" required>
+                <input type="text" id="edit-pseudo" name="username" placeholder="Username" required>
             </div>  
             <div class="field">
                 <label for="edit-passe">Password</label>
-                <input type="password" id="edit-passe" name="passe" placeholder="Password" required>
+                <input type="password" id="edit-passe" name="password_hash" placeholder="Password" required>
             </div>
             <div class="field">
-                <input type="submit" class="ui button" name="s'incrire" value="Create new account">
-                <input type="submit" class="ui button" name="connecter" value="Connect">
+                <input type="submit" class="ui primary button" name="connecter" value="Connect">
+                <a href="inscription.php" class="ui right floated basic button">Create new account</a>
             </div>  
-            <div class="field">
-
-            </div>
-
         </form>
     </div>
-    <?php
-}
 
-// Pied de page
-require 'footer.php';
-?>
+<?php } // Pied de page require 'footer.php'; ?>
 

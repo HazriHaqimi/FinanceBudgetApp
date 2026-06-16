@@ -20,7 +20,7 @@ if (isset($_SESSION['session_user_id']) && isset($_GET['id'])) {
                          
     mysqli_query($connexion, $sql_delete_debts);
 
-    $sql_delete_transaction = "DELETE FROM transaction 
+    $sql_delete_transaction = "DELETE FROM transactions 
                                WHERE transaction_id = '$transaction_id' 
                                AND user_id = '$session_user_id'";
 

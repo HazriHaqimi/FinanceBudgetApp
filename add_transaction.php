@@ -40,8 +40,13 @@ if (!isset($_SESSION['session_user_id'])) {
 }
 
 $session_user_id = $_SESSION['session_user_id'];
+//Recuperation des amis
+$query_contacts = "SELECT contact_id, name FROM contacts WHERE user_id = '$session_user_id'";
+$result_contacts = mysqli_query($connexion, $query_contacts);
 
-// 2. DID THEY HIT THE SAVE BUTTON?
+//Type category to be added more later
+$category_array = ['Entertainment', 'Groceries', 'Rent', 'Income'];
+
 if (isset($_POST['save'])) {
 
     $transaction_date = mysqli_real_escape_string($connexion, $_POST['transaction_date']);
@@ -52,7 +57,7 @@ if (isset($_POST['save'])) {
     $is_recurring = mysqli_real_escape_string($connexion, $_POST['is_recurring']);
     $transaction_type = mysqli_real_escape_string($connexion, $_POST['transaction_type']);
 
-    $requete = "INSERT INTO transaction 
+    $requete = "INSERT INTO transactions 
                 (user_id, type, category, amount, transaction_date, is_recurring, description, split_status) 
                 VALUES 
                 ('$session_user_id', '$transaction_type', '$category', '$amount', '$transaction_date', '$is_recurring', '$description', '$split_status')";
@@ -84,7 +89,7 @@ if (isset($_POST['save'])) {
 
         // REDIRECT ON SUCCESS (Change 'your_dashboard_page.php' to your actual file name!)
         require 'base_deconnexion.php';
-        header("Location: your_dashboard_page.php");
+        header("Location: transaction.php");
         exit();
     } else {
         $message_erreur = "Fatal Error saving transaction: " . mysqli_error($connexion);
@@ -131,10 +136,12 @@ require 'messages_application.php';
                 <label>Category</label>
                 <select class="ui fluid dropdown" name="category" required>
                     <option value="">Select a Category...</option>
-                    <option value="Entertainment">Entertainment</option>
-                    <option value="Groceries">Groceries</option>
-                    <option value="Rent">Rent</option>
-                    <option value="Income">Income</option>
+                    <?php
+                    // Loop through the ENUM array we built at the top of the file
+                    foreach ($category_array as $cat) {
+                        echo '<option value="' . htmlspecialchars($cat) . '">' . htmlspecialchars($cat) . '</option>';
+                    }
+                    ?>
                 </select>
             </div>
         </div> 
@@ -166,12 +173,20 @@ require 'messages_application.php';
                     <div class="item" data-value="ADD_NEW">
                         <i class="green plus icon"></i> Add more person
                     </div>
-
                     <div class="divider"></div>
 
-                    <div class="item" data-value="1">Alex</div>
-                    <div class="item" data-value="2">Sarah</div>
-                    <div class="item" data-value="3">John</div>
+                    <?php
+                    // Loop through the contacts from the database
+                    if ($result_contacts && mysqli_num_rows($result_contacts) > 0) {
+                        while ($contact = mysqli_fetch_assoc($result_contacts)) {
+                            // We put the contact_id into data-value, and the name into the text!
+                            echo '<div class="item" data-value="' . $contact['contact_id'] . '">' . htmlspecialchars($contact['name']) . '</div>';
+                        }
+                    } else {
+                        // If they have no friends saved yet
+                        echo '<div class="disabled item">No friends found. Add one above!</div>';
+                    }
+                    ?>
                 </div>
             </div>
         </div>
@@ -209,7 +224,7 @@ require 'messages_application.php';
             <label>Type of transaction: </label>
             <div class="field">
                 <div class="ui radio checkbox">
-                    <input type="radio" name="transaction_type" id="type_expenses" value="expense" required>
+                    <input type="radio" name="transaction_type" id="type_expenses" value="expense" required checked>
                     <label for="type_expenses">Expenses</label>
                 </div>
             </div>
@@ -288,86 +303,86 @@ require 'messages_application.php';
 <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.js"></script>
 
 <script>
-                                $(document).ready(function () {
-                                    let currentSelectedFriendId = null;
+                        $(document).ready(function () {
+                            let currentSelectedFriendId = null;
 
-                                    $('#friends_dropdown').dropdown({
-                                        onAdd: function (addedValue, addedText, $addedChoice) {
-                                            if (addedValue === 'ADD_NEW') {
-                                                $('#addContactModal').modal('show');
-                                                setTimeout(function () {
-                                                    $('#friends_dropdown').dropdown('remove selected', 'ADD_NEW');
-                                                }, 10);
-                                            } else {
-                                                currentSelectedFriendId = addedValue;
+                            $('#friends_dropdown').dropdown({
+                                onAdd: function (addedValue, addedText, $addedChoice) {
+                                    if (addedValue === 'ADD_NEW') {
+                                        $('#addContactModal').modal('show');
+                                        setTimeout(function () {
+                                            $('#friends_dropdown').dropdown('remove selected', 'ADD_NEW');
+                                        }, 10);
+                                    } else {
+                                        currentSelectedFriendId = addedValue;
 
-                                                $('#splitFriendName').text(addedText);
-                                                $('#split_value').val('');
+                                        $('#splitFriendName').text(addedText);
+                                        $('#split_value').val('');
 
-                                                $('#splitDetailsModal').modal({
-                                                    closable: false,
-                                                    onApprove: function () {
-                                                        let val = parseFloat($('#split_value').val());
-                                                        let method = $('input[name="split_method"]:checked').val();
-                                                        let totalAmount = parseFloat($('input[name="amount"]').val());
+                                        $('#splitDetailsModal').modal({
+                                            closable: false,
+                                            onApprove: function () {
+                                                let val = parseFloat($('#split_value').val());
+                                                let method = $('input[name="split_method"]:checked').val();
+                                                let totalAmount = parseFloat($('input[name="amount"]').val());
 
-                                                        if (isNaN(val) || isNaN(totalAmount)) {
-                                                            alert("Please enter the total Transaction Amount first, and a valid split value.");
-                                                            return false;
-                                                        }
+                                                if (isNaN(val) || isNaN(totalAmount)) {
+                                                    alert("Please enter the total Transaction Amount first, and a valid split value.");
+                                                    return false;
+                                                }
 
-                                                        let finalOwed = 0;
-                                                        if (method === 'percentage') {
-                                                            finalOwed = totalAmount * (val / 100);
-                                                        } else {
-                                                            finalOwed = val;
-                                                        }
+                                                let finalOwed = 0;
+                                                if (method === 'percentage') {
+                                                    finalOwed = totalAmount * (val / 100);
+                                                } else {
+                                                    finalOwed = val;
+                                                }
 
-                                                        let hiddenInputHtml = '<input type="hidden" id="hidden_amount_' + currentSelectedFriendId + '" name="friend_amounts[' + currentSelectedFriendId + ']" value="' + finalOwed.toFixed(2) + '">';
+                                                let hiddenInputHtml = '<input type="hidden" id="hidden_amount_' + currentSelectedFriendId + '" name="friend_amounts[' + currentSelectedFriendId + ']" value="' + finalOwed.toFixed(2) + '">';
 
-                                                        // FIX: We target the specific ID of the main form!
-                                                        if ($('#hidden_amount_' + currentSelectedFriendId).length) {
-                                                            $('#hidden_amount_' + currentSelectedFriendId).val(finalOwed.toFixed(2));
-                                                        } else {
-                                                            $('#main_transaction_form').append(hiddenInputHtml);
-                                                        }
-                                                    }
-                                                }).modal('show');
+                                                // FIX: We target the specific ID of the main form!
+                                                if ($('#hidden_amount_' + currentSelectedFriendId).length) {
+                                                    $('#hidden_amount_' + currentSelectedFriendId).val(finalOwed.toFixed(2));
+                                                } else {
+                                                    $('#main_transaction_form').append(hiddenInputHtml);
+                                                }
                                             }
-                                        },
-                                        onRemove: function (removedValue, removedText, $removedChoice) {
-                                            $('#hidden_amount_' + removedValue).remove();
-                                        }
-                                    });
-
-                                    $('.ui.dropdown').not('#friends_dropdown').dropdown();
-                                    $('.ui.checkbox').checkbox();
-                                });
-
-                                // RESTORED TOGGLE FUNCTIONS
-                                function toggleFriendsList() {
-                                    var othersRadio = document.getElementById('split_others');
-                                    var dropdownBox = document.getElementById('friend_dropdown_box');
-                                    if (othersRadio && dropdownBox) {
-                                        if (othersRadio.checked) {
-                                            dropdownBox.style.display = 'block';
-                                        } else {
-                                            dropdownBox.style.display = 'none';
-                                        }
+                                        }).modal('show');
                                     }
+                                },
+                                onRemove: function (removedValue, removedText, $removedChoice) {
+                                    $('#hidden_amount_' + removedValue).remove();
                                 }
+                            });
 
-                                function toggleRecurringOptions() {
-                                    var yesRecurringRadio = document.getElementById('yes_recurring');
-                                    var recurringBox = document.getElementById('recurring_options_box');
-                                    if (yesRecurringRadio && recurringBox) {
-                                        if (yesRecurringRadio.checked) {
-                                            recurringBox.style.display = 'block';
-                                        } else {
-                                            recurringBox.style.display = 'none';
-                                        }
-                                    }
+                            $('.ui.dropdown').not('#friends_dropdown').dropdown();
+                            $('.ui.checkbox').checkbox();
+                        });
+
+                        // RESTORED TOGGLE FUNCTIONS
+                        function toggleFriendsList() {
+                            var othersRadio = document.getElementById('split_others');
+                            var dropdownBox = document.getElementById('friend_dropdown_box');
+                            if (othersRadio && dropdownBox) {
+                                if (othersRadio.checked) {
+                                    dropdownBox.style.display = 'block';
+                                } else {
+                                    dropdownBox.style.display = 'none';
                                 }
+                            }
+                        }
+
+                        function toggleRecurringOptions() {
+                            var yesRecurringRadio = document.getElementById('yes_recurring');
+                            var recurringBox = document.getElementById('recurring_options_box');
+                            if (yesRecurringRadio && recurringBox) {
+                                if (yesRecurringRadio.checked) {
+                                    recurringBox.style.display = 'block';
+                                } else {
+                                    recurringBox.style.display = 'none';
+                                }
+                            }
+                        }
 </script>
 <?php
 // Pied de page

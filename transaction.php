@@ -28,17 +28,17 @@ if (isset($_SESSION['session_user_id'])) {
         // Récupération des informations de l'utilisateur connecté
         // dans la table utilisateur
         // Requête SQL
-        $requete = "select * from utilisateur where user_id = '$session_user_id';";
+        $requete = "select * from users where user_id = '$session_user_id';";
         // Exécution de la requête
         $resultat = mysqli_query($connexion, $requete);
         if ($resultat) {
             // Vérification du nombre de lignes du résultat
             if (mysqli_num_rows($resultat) != 0) {
 
-                $requete_recent_activities = "SELECT transaction_date, description,"
-                        . "amount,category FROM transaction "
-                        . "WHERE user_id='$session_user_id' "
-                        . "ORDER BY transaction_date DESC";
+                $requete_recent_activities = "SELECT transaction_id, transaction_date, description,"
+        . "amount,category FROM transactions "
+        . "WHERE user_id='$session_user_id' "
+        . "ORDER BY transaction_date DESC";
 
                 $result_recent_activities = mysqli_query($connexion, $requete_recent_activities);
             }
@@ -105,7 +105,7 @@ if (!empty($message_erreur) || !(isset($_POST['inscrire']) || isset($_POST['modi
                                 <td><?php echo $row['transaction_date']?></td>
                                     <td><?php echo $row['description']?></td>
                                     <td><?php echo $row['category']?></td>
-                                    <td><?php echo $row['amount']?></td>
+                                    <td><?php echo $row['amount']?> €</td>
                                     <td>
                                         <a href="delete_activity.php?id=<?php echo $row['transaction_id']; ?>" class="ui red icon button">
                                             <i class="trash icon"></i>
