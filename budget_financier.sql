@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 17, 2026 at 10:22 PM
+-- Generation Time: Jun 16, 2026 at 11:21 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -28,11 +28,12 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `contacts` (
-  `idContact` bigint(20) UNSIGNED NOT NULL,
+  `contact_id` int(11) UNSIGNED NOT NULL,
+  `user_id` int(11) UNSIGNED NOT NULL,
   `name` varchar(100) NOT NULL,
-  `phone_number` varchar(20) NOT NULL,
-  `email` varchar(100) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+  `phone_number` varchar(50) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -41,30 +42,65 @@ CREATE TABLE `contacts` (
 --
 
 CREATE TABLE `debts` (
-  `idDebts` bigint(20) UNSIGNED NOT NULL,
-  `contact_id` bigint(20) UNSIGNED NOT NULL,
-  `debt_type` enum('they_owe','i_owe_them') NOT NULL,
+  `debt_id` int(11) UNSIGNED NOT NULL,
+  `user_id` int(11) UNSIGNED NOT NULL,
+  `contact_id` int(11) UNSIGNED NOT NULL,
+  `transaction_id` int(11) UNSIGNED NOT NULL,
+  `debt_type` enum('i_owe','they_owe') NOT NULL,
   `original_amount` decimal(10,2) NOT NULL,
-  `due_date` date NOT NULL,
-  `status` enum('active','settled') NOT NULL,
-  `reason` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+  `remaining_amount` decimal(10,2) NOT NULL,
+  `due_date` date DEFAULT NULL,
+  `status` enum('pending','paid') NOT NULL DEFAULT 'pending',
+  `reason` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `transaction`
+-- Table structure for table `transactions`
 --
 
-CREATE TABLE `transaction` (
-  `idTransaction` bigint(20) UNSIGNED NOT NULL,
-  `category` enum('education','electronics','entertainment','financial_services','foods_and_beverages','health_and_beauty','home_and_property','leisure_and_sports','medical','other_expenses','services','shopping','transportation','travel','utilities') NOT NULL,
-  `debt_id` bigint(20) UNSIGNED NOT NULL,
+CREATE TABLE `transactions` (
+  `transaction_id` int(11) UNSIGNED NOT NULL,
+  `user_id` int(11) UNSIGNED NOT NULL,
   `type` enum('income','expense') NOT NULL,
+  `category` varchar(100) DEFAULT NULL,
   `amount` decimal(10,2) NOT NULL,
   `transaction_date` date NOT NULL,
-  `note` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+  `is_recurring` tinyint(1) NOT NULL DEFAULT 0,
+  `description` varchar(255) DEFAULT NULL,
+  `split_status` varchar(50) DEFAULT NULL,
+  `recurring_frequency` enum('daily','weekly','monthly','yearly') DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `transactions`
+--
+
+INSERT INTO `transactions` (`transaction_id`, `user_id`, `type`, `category`, `amount`, `transaction_date`, `is_recurring`, `description`, `split_status`, `recurring_frequency`) VALUES
+(1, 1, 'expense', 'Groceries', 10.00, '2026-06-15', 0, 'Chicken Street', 'none', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `user_id` int(11) UNSIGNED NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(150) NOT NULL,
+  `phone_number` varchar(50) DEFAULT NULL,
+  `username` varchar(10) NOT NULL,
+  `password_hash` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`user_id`, `name`, `email`, `phone_number`, `username`, `password_hash`) VALUES
+(1, 'Hazri Haqimi Bin Mohd Marlizan', 'qimihazri@yahoo.com', '0623661233', 'hazers', '$2y$10$r.4fvQ/apaKWFFHJrfbDC.8ooMeqEo7F6UuWWeq32zz5bRgRTFuMC');
 
 --
 -- Indexes for dumped tables
@@ -74,21 +110,32 @@ CREATE TABLE `transaction` (
 -- Indexes for table `contacts`
 --
 ALTER TABLE `contacts`
-  ADD PRIMARY KEY (`idContact`);
+  ADD PRIMARY KEY (`contact_id`),
+  ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `debts`
 --
 ALTER TABLE `debts`
-  ADD PRIMARY KEY (`idDebts`),
-  ADD KEY `contact_id` (`contact_id`);
+  ADD PRIMARY KEY (`debt_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `contact_id` (`contact_id`),
+  ADD KEY `transaction_id` (`transaction_id`);
 
 --
--- Indexes for table `transaction`
+-- Indexes for table `transactions`
 --
-ALTER TABLE `transaction`
-  ADD PRIMARY KEY (`idTransaction`),
-  ADD KEY `debt_id` (`debt_id`);
+ALTER TABLE `transactions`
+  ADD PRIMARY KEY (`transaction_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `username` (`username`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -98,35 +145,49 @@ ALTER TABLE `transaction`
 -- AUTO_INCREMENT for table `contacts`
 --
 ALTER TABLE `contacts`
-  MODIFY `idContact` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `contact_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `debts`
 --
 ALTER TABLE `debts`
-  MODIFY `idDebts` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `debt_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `transaction`
+-- AUTO_INCREMENT for table `transactions`
 --
-ALTER TABLE `transaction`
-  MODIFY `idTransaction` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+ALTER TABLE `transactions`
+  MODIFY `transaction_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `user_id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- Constraints for dumped tables
 --
 
 --
+-- Constraints for table `contacts`
+--
+ALTER TABLE `contacts`
+  ADD CONSTRAINT `contacts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `debts`
 --
 ALTER TABLE `debts`
-  ADD CONSTRAINT `debts_ibfk_1` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`idContact`);
+  ADD CONSTRAINT `debts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `debts_ibfk_2` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`contact_id`),
+  ADD CONSTRAINT `debts_ibfk_3` FOREIGN KEY (`transaction_id`) REFERENCES `transactions` (`transaction_id`);
 
 --
--- Constraints for table `transaction`
+-- Constraints for table `transactions`
 --
-ALTER TABLE `transaction`
-  ADD CONSTRAINT `transaction_ibfk_1` FOREIGN KEY (`debt_id`) REFERENCES `debts` (`idDebts`);
+ALTER TABLE `transactions`
+  ADD CONSTRAINT `transactions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
