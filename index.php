@@ -9,7 +9,7 @@ $message = "";
 $message_erreur = "";
 
 // ***********************************************
-// Connexion à la base de données cuicui du serveur localhost
+// Connexion à la base de données budget_financier
 //
 require 'base_connexion.php';
 

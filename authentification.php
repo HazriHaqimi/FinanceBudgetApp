@@ -5,13 +5,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 // Vérification de l'éventuelle connexion d'un utilisateur
-if (isset($_SESSION['session_idutilisateur'])) {
+if (isset($_SESSION['session_user_id'])) {
   // Un utilisateur est connecté
-  // Récupération des variables de session dans des variables du script
-  $session_idutilisateur = $_SESSION['session_idutilisateur'];
-  $session_pseudo = $_SESSION['session_pseudo'];
-  $session_nom = $_SESSION['session_nom'];
-  $session_prenom = $_SESSION['session_prenom'];
+  // Récupération de l'identifiant, du pseudo, du nom et du prénom
+  // de l'utilisateur connecté dans des variables de session
+  $session_user_id = $_SESSION['session_user_id'];
+  $session_username = $_SESSION['session_username'];
 } else {
   // Aucun utilisateur connecté
   // Redirection vers la page login.php
@@ -21,3 +20,4 @@ if (isset($_SESSION['session_idutilisateur'])) {
   exit();
 }
 ?>
+
