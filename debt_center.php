@@ -86,17 +86,29 @@ require 'messages_application.php';
                         </div>
                         <div class="description" style="margin: 15px 0;">
                             <div class="ui teal progress" style="margin: 0;">
-                                <div class="bar" style="width: <?php echo $pct; ?>%;"></div>
+                                <div class="bar" style="width: <?php echo $pct; ?>%; min-width: 0;"></div>
                             </div>
                         </div>
+                        <?php $paid = $row['original_amount'] - $row['remaining_amount']; ?>
                         <div class="extra content" style="padding-left: 0; padding-right: 0; display: flex; justify-content: space-between; align-items: center;">
                             <span><i class="calendar icon"></i> Due: <?php echo $row['due_date'] ?? 'N/A'; ?></span>
-                            <button type="button" class="ui tiny green basic button pay-btn"
-                                    data-debt-id="<?php echo $row['debt_id']; ?>"
-                                    data-name="<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>"
-                                    data-remaining="<?php echo number_format($row['remaining_amount'], 2, '.', ''); ?>">
-                                Pay
-                            </button>
+                            <div>
+                                <?php if ($paid > 0): ?>
+                                <button type="button" class="ui tiny blue basic button modify-btn"
+                                        data-debt-id="<?php echo $row['debt_id']; ?>"
+                                        data-name="<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>"
+                                        data-original="<?php echo number_format($row['original_amount'], 2, '.', ''); ?>"
+                                        data-paid="<?php echo number_format($paid, 2, '.', ''); ?>">
+                                    Modify
+                                </button>
+                                <?php endif; ?>
+                                <button type="button" class="ui tiny green basic button pay-btn"
+                                        data-debt-id="<?php echo $row['debt_id']; ?>"
+                                        data-name="<?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>"
+                                        data-remaining="<?php echo number_format($row['remaining_amount'], 2, '.', ''); ?>">
+                                    Pay
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -125,7 +137,7 @@ require 'messages_application.php';
                         </div>
                         <div class="description" style="margin: 15px 0;">
                             <div class="ui orange progress" style="margin: 0;">
-                                <div class="bar" style="width: <?php echo $pct; ?>%;"></div>
+                                <div class="bar" style="width: <?php echo $pct; ?>%; min-width: 0;"></div>
                             </div>
                         </div>
                         <div class="extra content" style="padding-left: 0; padding-right: 0; display: flex; justify-content: space-between; align-items: center;">
@@ -193,6 +205,71 @@ require 'messages_application.php';
         if (amt > max + 0.0001) {
             e.preventDefault();
             alert('You cannot pay more than the remaining amount (' + max.toFixed(2) + ' €).');
+        }
+    });
+</script>
+
+<!-- ============ MODIFY PAYMENT POPUP ============ -->
+<div id="modOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;"></div>
+<div id="modModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:25px; border-radius:8px; width:360px; max-width:90%; z-index:1001; box-shadow:0 5px 25px rgba(0,0,0,0.3);">
+    <h3 class="ui header" style="margin-top:0;">Correct your payment</h3>
+    <p>Debt with <strong id="modName"></strong></p>
+    <form method="POST" action="modify_payment.php" id="modForm">
+        <input type="hidden" name="debt_id" id="modDebtId">
+        <p style="color:#888; font-size:0.9em; margin-bottom:10px;">
+            Total debt: <strong id="modOriginal"></strong> € &nbsp;|&nbsp;
+            Paid so far: <strong id="modPaidLabel"></strong> €
+        </p>
+        <div class="field" style="margin-bottom:8px;">
+            <label><strong>New total amount paid (€)</strong></label>
+            <input type="number" step="0.01" min="0" name="new_paid" id="modNewPaid" required>
+        </div>
+        <p style="color:#888; font-size:0.85em;">
+            Lower it and you get the difference back (the other person loses it). It can't be more than the total debt.
+        </p>
+        <div style="text-align:right; margin-top:15px;">
+            <button type="button" class="ui button" onclick="closeModModal()">Cancel</button>
+            <button type="submit" class="ui blue button">Save change</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function closeModModal() {
+        document.getElementById('modOverlay').style.display = 'none';
+        document.getElementById('modModal').style.display = 'none';
+    }
+
+    document.querySelectorAll('.modify-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var original = parseFloat(btn.getAttribute('data-original'));
+            var paid = parseFloat(btn.getAttribute('data-paid'));
+            document.getElementById('modDebtId').value = btn.getAttribute('data-debt-id');
+            document.getElementById('modName').textContent = btn.getAttribute('data-name');
+            document.getElementById('modOriginal').textContent = original.toFixed(2);
+            document.getElementById('modPaidLabel').textContent = paid.toFixed(2);
+            var input = document.getElementById('modNewPaid');
+            input.value = paid.toFixed(2);
+            input.max = original;
+            document.getElementById('modOverlay').style.display = 'block';
+            document.getElementById('modModal').style.display = 'block';
+        });
+    });
+
+    document.getElementById('modOverlay').addEventListener('click', closeModModal);
+
+    // Validation : 0 <= nouveau montant payé <= dette totale
+    document.getElementById('modForm').addEventListener('submit', function (e) {
+        var val = parseFloat(document.getElementById('modNewPaid').value);
+        var max = parseFloat(document.getElementById('modNewPaid').max);
+        if (isNaN(val) || val < 0) {
+            e.preventDefault();
+            alert('Please enter a valid amount.');
+            return;
+        }
+        if (val > max + 0.0001) {
+            e.preventDefault();
+            alert('The amount paid cannot be more than the total debt (' + max.toFixed(2) + ' €).');
         }
     });
 </script>

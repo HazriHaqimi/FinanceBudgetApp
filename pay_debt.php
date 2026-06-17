@@ -55,23 +55,16 @@ if ($result && mysqli_num_rows($result) == 1) {
             WHERE debt_id = $debt_id";
     mysqli_query($connexion, $upd);
 
-    // Enregistre le paiement comme une DÉPENSE dans mon compte.
-    // -> il apparaît dans "Recent Activity" et diminue le "Total Balance" du dashboard.
+    // Modèle "ma part" : payer ma dette est MA dépense (c'est ma part de l'achat).
+    // -> elle apparaît dans "Recent Activity" et diminue mon "Total Balance".
+    // Le créancier ne reçoit PAS de revenu : il n'avait compté que sa propre part,
+    // il récupère simplement l'argent qu'il avait avancé (neutre pour son solde).
     $pay_desc = mysqli_real_escape_string($connexion, "Payment to " . $debt['name']);
     $ins_tx = "INSERT INTO transactions
                (user_id, type, category, amount, transaction_date, is_recurring, description, split_status)
                VALUES
                ($session_user_id, 'expense', 'Debt Payment', $pay_amount, CURRENT_DATE(), 0, '$pay_desc', 'none')";
     mysqli_query($connexion, $ins_tx);
-
-    // Enregistre le paiement comme un REVENU pour le CRÉANCIER (la personne payée).
-    // -> son Total Balance augmente et ça apparaît dans son Recent Activity.
-    $recv_desc = mysqli_real_escape_string($connexion, "Payment from " . $session_username);
-    $ins_income = "INSERT INTO transactions
-                   (user_id, type, category, amount, transaction_date, is_recurring, description, split_status)
-                   VALUES
-                   ($creditor_id, 'income', 'Debt Payment', $pay_amount, CURRENT_DATE(), 0, '$recv_desc', 'none')";
-    mysqli_query($connexion, $ins_income);
 
     // Message envoyé au créancier
     $paid_fmt = number_format($pay_amount, 2);

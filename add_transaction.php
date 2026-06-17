@@ -71,36 +71,61 @@ if (isset($_POST['save'])) {
         $freq_sql = "'$recurring_frequency'";     // ex: 'monthly'
     }
 
+    // Préparation du partage : on calcule la part de chaque ami,
+    // puis MA part = montant total - somme des parts des amis.
+    // (modèle "ma part" : ma transaction ne compte que ce qui est à moi)
+    $split_error = false;
+    $owed_map = [];
+    $sum_owed = 0;
+    $tx_amount = (float) $amount;   // sans partage : le montant complet est à moi
+
+    if ($split_status == 'others' && !empty($_POST['friends'])) {
+        $friends_array = array_filter(explode(',', $_POST['friends']));
+        $friend_amounts = $_POST['friend_amounts'] ?? [];
+        $num_friends = count($friends_array);
+
+        foreach ($friends_array as $fid) {
+            $fid = trim($fid);
+            if (isset($friend_amounts[$fid]) && (float) $friend_amounts[$fid] > 0) {
+                $owed = round((float) $friend_amounts[$fid], 2);
+            } else {
+                $owed = round((float) $amount / ($num_friends + 1), 2); // partage égal (moi + amis)
+            }
+            $owed_map[$fid] = $owed;
+            $sum_owed += $owed;
+        }
+
+        if ($sum_owed > (float) $amount + 0.001) {
+            $message_erreur = "The total split (" . number_format($sum_owed, 2)
+                . " €) cannot be more than the transaction amount ("
+                . number_format((float) $amount, 2) . " €).";
+            $split_error = true;
+        } else {
+            // MA part = ce qui reste après les parts des amis
+            $tx_amount = round((float) $amount - $sum_owed, 2);
+        }
+    }
+
+    $tx_amount_sql = mysqli_real_escape_string($connexion, $tx_amount);
+
     $requete = "INSERT INTO transactions
                 (user_id, type, category, amount, transaction_date, is_recurring, description, split_status, recurring_frequency)
                 VALUES
-                ('$session_user_id', '$transaction_type', '$category', '$amount', '$transaction_date', '$is_recurring', '$description', '$split_status', $freq_sql)";
+                ('$session_user_id', '$transaction_type', '$category', '$tx_amount_sql', '$transaction_date', '$is_recurring', '$description', '$split_status', $freq_sql)";
 
-    if (mysqli_query($connexion, $requete)) {
+    if (!$split_error && mysqli_query($connexion, $requete)) {
 
         $new_transaction_id = mysqli_insert_id($connexion);
 
-        if ($split_status == 'others' && !empty($_POST['friends'])) {
-            $friends_array = array_filter(explode(',', $_POST['friends']));
-            $friend_amounts = $_POST['friend_amounts'] ?? [];
-            $num_friends = count($friends_array);
-
-            foreach ($friends_array as $friend_user_id) {
-                $friend_user_id = mysqli_real_escape_string($connexion, trim($friend_user_id));
-
-                // Use the amount they confirmed in the modal, or auto-split equally
-                if (isset($friend_amounts[$friend_user_id]) && $friend_amounts[$friend_user_id] > 0) {
-                    $owed = mysqli_real_escape_string($connexion, $friend_amounts[$friend_user_id]);
-                } else {
-                    $owed = round($amount / ($num_friends + 1), 2); // split between you + all friends
-                }
-
-                $sql_debt = "INSERT INTO debts 
-                     (user_id, friend_user_id, transaction_id, debt_type, original_amount, remaining_amount, status) 
-                     VALUES 
-                     ('$session_user_id', '$friend_user_id', '$new_transaction_id', 'they_owe', '$owed', '$owed', 'pending')";
-                mysqli_query($connexion, $sql_debt);
-            }
+        // Création des dettes : ce que chaque ami me doit
+        foreach ($owed_map as $fid => $owed) {
+            $fid_sql  = mysqli_real_escape_string($connexion, $fid);
+            $owed_sql = mysqli_real_escape_string($connexion, $owed);
+            $sql_debt = "INSERT INTO debts
+                 (user_id, friend_user_id, transaction_id, debt_type, original_amount, remaining_amount, status)
+                 VALUES
+                 ('$session_user_id', '$fid_sql', '$new_transaction_id', 'they_owe', '$owed_sql', '$owed_sql', 'pending')";
+            mysqli_query($connexion, $sql_debt);
         }
 
         // Log de confirmation affiché sur la page transaction
@@ -351,6 +376,26 @@ require 'messages_application.php';
                                                     finalOwed = val;
                                                 }
 
+                                                if (finalOwed <= 0) {
+                                                    alert("Please enter an amount greater than 0.");
+                                                    return false;
+                                                }
+
+                                                // Somme déjà attribuée aux AUTRES amis
+                                                let otherSum = 0;
+                                                $('#main_transaction_form input[name^="friend_amounts["]').each(function () {
+                                                    if (this.id !== 'hidden_amount_' + currentSelectedFriendId) {
+                                                        otherSum += parseFloat(this.value) || 0;
+                                                    }
+                                                });
+
+                                                if (otherSum + finalOwed > totalAmount + 0.001) {
+                                                    alert("The total split (" + (otherSum + finalOwed).toFixed(2)
+                                                        + " €) can't be more than the transaction amount ("
+                                                        + totalAmount.toFixed(2) + " €).");
+                                                    return false;
+                                                }
+
                                                 let hiddenInputHtml = '<input type="hidden" id="hidden_amount_' + currentSelectedFriendId + '" name="friend_amounts[' + currentSelectedFriendId + ']" value="' + finalOwed.toFixed(2) + '">';
 
                                                 // FIX: We target the specific ID of the main form!
@@ -370,6 +415,29 @@ require 'messages_application.php';
 
                             //$('.ui.dropdown').not('#friends_dropdown').dropdown();
                             $('.ui.checkbox').checkbox();
+
+                            // On empêche la touche Entrée de soumettre le formulaire tout seul.
+                            // Il faut cliquer sur le bouton "Save" pour enregistrer.
+                            $('#main_transaction_form').on('keydown', 'input', function (e) {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    this.blur(); // déclenche l'événement "change" si le montant a changé
+                                }
+                            });
+
+                            // Si on change le MONTANT après avoir déjà réparti avec des amis,
+                            // les parts deviennent fausses -> on réinitialise la répartition.
+                            $('input[name="amount"]').on('change', function () {
+                                var hasAmounts = $('#main_transaction_form input[name^="friend_amounts["]').length > 0;
+                                var selected = $('#friends_dropdown').dropdown('get value');
+                                var hasFriends = selected && selected.length > 0;
+
+                                if (hasAmounts || hasFriends) {
+                                    $('#friends_dropdown').dropdown('clear');
+                                    $('#main_transaction_form input[name^="friend_amounts["]').remove();
+                                    alert("You changed the amount, so the split was reset. Please select your friend(s) and their share again.");
+                                }
+                            });
                         });
 
                         // RESTORED TOGGLE FUNCTIONS

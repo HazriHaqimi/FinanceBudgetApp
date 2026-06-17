@@ -54,11 +54,16 @@ if (isset($_SESSION['session_user_id'])) {
                 // On ajoute la condition de catégorie seulement si un filtre est choisi
                 $where_cat = $filter_category !== '' ? " AND category = '$filter_category' " : "";
 
-                $requete_recent_activities = "SELECT transaction_id, transaction_date, description,"
-        . "amount,category FROM transactions "
-        . "WHERE user_id='$session_user_id' "
-        . $where_cat
-        . "ORDER BY transaction_date DESC";
+                // On compte aussi les dettes encore en cours liées à chaque transaction
+                // (pour bloquer la suppression tant que la dette n'est pas réglée).
+                $requete_recent_activities = "SELECT t.transaction_id, t.transaction_date, t.description,
+                        t.amount, t.category,
+                        (SELECT COUNT(*) FROM debts d
+                         WHERE d.transaction_id = t.transaction_id AND d.status = 'pending') AS pending_debts
+                    FROM transactions t
+                    WHERE t.user_id='$session_user_id' "
+        . str_replace('category', 't.category', $where_cat)
+        . " ORDER BY t.transaction_date DESC";
 
                 $result_recent_activities = mysqli_query($connexion, $requete_recent_activities);
             }
@@ -150,19 +155,34 @@ if (!empty($message_erreur) || !(isset($_POST['inscrire']) || isset($_POST['modi
                                         No transactions found<?php echo $filter_category !== '' ? ' for "' . htmlspecialchars($filter_category) . '"' : ''; ?>.
                                     </td>
                                 </tr>
-                                <?php else: while ($row = mysqli_fetch_assoc($result_recent_activities)) { ?>
+                                <?php else: while ($row = mysqli_fetch_assoc($result_recent_activities)) {
+                                    $is_payment = ($row['category'] === 'Debt Payment');
+                                    $has_pending = ($row['pending_debts'] > 0); ?>
                                 <tr>
                                 <td><?php echo $row['transaction_date']?></td>
                                     <td><?php echo $row['description']?></td>
                                     <td><?php echo $row['category']?></td>
                                     <td><?php echo $row['amount']?> €</td>
                                     <td>
-                                        <a href="delete_activity.php?id=<?php echo $row['transaction_id']; ?>" class="ui red icon button">
-                                            <i class="trash icon"></i>
-                                        </a>
-                                        <a href="edit_activity.php?id=<?php echo $row['transaction_id']; ?>" class="ui grey icon button">
-                                            <i class="edit icon"></i>
-                                        </a>
+                                        <?php if ($is_payment): ?>
+                                            <span data-tooltip="Debt payments are managed in the Debt Center" data-position="left center">
+                                                <button class="ui icon button disabled"><i class="trash icon"></i></button>
+                                                <button class="ui icon button disabled"><i class="lock icon"></i></button>
+                                            </span>
+                                        <?php else: ?>
+                                            <?php if ($has_pending): ?>
+                                                <span data-tooltip="Delete is locked until the debt is fully paid" data-position="left center">
+                                                    <button class="ui icon button disabled"><i class="trash icon"></i></button>
+                                                </span>
+                                            <?php else: ?>
+                                                <a href="delete_activity.php?id=<?php echo $row['transaction_id']; ?>" class="ui red icon button">
+                                                    <i class="trash icon"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <a href="edit_activity.php?id=<?php echo $row['transaction_id']; ?>" class="ui grey icon button">
+                                                <i class="edit icon"></i>
+                                            </a>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                                 <?php } endif; ?>

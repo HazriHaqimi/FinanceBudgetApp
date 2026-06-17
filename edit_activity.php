@@ -24,6 +24,13 @@ if (mysqli_num_rows($result) == 0) {
 
 $row = mysqli_fetch_assoc($result);
 
+// Les paiements de dette ne se modifient pas ici : ils se gèrent dans le Debt Center
+if ($row['category'] === 'Debt Payment') {
+    $_SESSION['flash_erreur'] = "Debt payments can only be modified from the Debt Center.";
+    header("Location: transaction.php");
+    exit();
+}
+
 // 3. Bring in our Category array from the add page!
 $category_array = ['Entertainment', 'Groceries', 'Rent', 'Income', 'Shopping', 'Transport', 'Utilities'];
 
