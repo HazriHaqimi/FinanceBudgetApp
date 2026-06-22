@@ -126,6 +126,13 @@ if (isset($_POST['inscrire']) || isset($_POST['modifier'])) {
     // Chiffrement du mot de passe
     $passe_chiffre = password_hash($passe1, PASSWORD_DEFAULT);
 
+    // Versions échappées pour les requêtes SQL (protection contre l'injection)
+    $name_sql      = mysqli_real_escape_string($connexion, $name);
+    $mail_sql      = mysqli_real_escape_string($connexion, $mail);
+    $username_sql  = mysqli_real_escape_string($connexion, $username);
+    $telephone_sql = mysqli_real_escape_string($connexion, $telephone);
+    $passe_sql     = mysqli_real_escape_string($connexion, $passe_chiffre);
+
     // Si aucun message d'erreur
     if (empty($message_erreur)) {
         //*******************************************
@@ -136,10 +143,10 @@ if (isset($_POST['inscrire']) || isset($_POST['modifier'])) {
         // Vérification que le mail n'existe pas dans la table utilisateur
         if (isset($session_user_id)) {
             // Un utilisateur est connecté
-            $requete = "SELECT * FROM users WHERE email = '$mail' AND user_id != '$session_user_id'";
+            $requete = "SELECT * FROM users WHERE email = '$mail_sql' AND user_id != '$session_user_id'";
         } else {
             // Aucun utilisateur connecté
-            $requete = "SELECT * FROM users WHERE email = '$mail'";
+            $requete = "SELECT * FROM users WHERE email = '$mail_sql'";
         }
         
         // Exécution de la requête
@@ -151,10 +158,10 @@ if (isset($_POST['inscrire']) || isset($_POST['modifier'])) {
         // Vérification que le pseudo n'existe pas dans la table utilisateur
         if (isset($session_user_id)) {
             // Un utilisateur est connecté
-            $requete = "SELECT * FROM users WHERE username = '$username' AND user_id != '$session_user_id'";
+            $requete = "SELECT * FROM users WHERE username = '$username_sql' AND user_id != '$session_user_id'";
         } else {
             // Aucun utilisateur connecté
-            $requete = "SELECT * FROM users WHERE username = '$username'";
+            $requete = "SELECT * FROM users WHERE username = '$username_sql'";
         }
         
         // Exécution de la requête
@@ -169,45 +176,46 @@ if (isset($_POST['inscrire']) || isset($_POST['modifier'])) {
         if (isset($session_user_id)) {
             // Un utilisateur est connecté
             // Requête de mise à jour de l'utilisateur dans la table utilisateur
-            $requete = "UPDATE users SET 
-                        name = '$name', 
-                        email = '$mail', 
-                        phone_number = '$telephone', 
-                        username = '$username', 
-                        password_hash = '$passe_chiffre' 
+            $requete = "UPDATE users SET
+                        name = '$name_sql',
+                        email = '$mail_sql',
+                        phone_number = '$telephone_sql',
+                        username = '$username_sql',
+                        password_hash = '$passe_sql'
                         WHERE user_id = '$session_user_id'";
         } else {
             // Aucun utilisateur connecté
             // Requête d'insertion de l'utilisateur dans la table utilisateur
-            $requete = "INSERT INTO users (name, email, phone_number, username, password_hash) 
-                        VALUES ('$name', '$mail', '$telephone', '$username', '$passe_chiffre')";
+            $requete = "INSERT INTO users (name, email, phone_number, username, password_hash)
+                        VALUES ('$name_sql', '$mail_sql', '$telephone_sql', '$username_sql', '$passe_sql')";
         }
         
         // Exécution de la requête
         $resultat = mysqli_query($connexion, $requete);
         if ($resultat) {
-            // Affiche un message de confirmation ainsi que les valeurs saisies
+            // Succès : on prépare un message "flash" et on redirige
             if (isset($session_user_id)) {
-                $message .= "<div class='ui positive message'><p>Nous avons pris en compte votre modification.</p></div>\n";
+                // Modification du profil -> on déconnecte l'utilisateur
+                // et on le redirige vers la page de connexion
+                require 'base_deconnexion.php';
+                // On vide les variables de session de connexion
+                unset($_SESSION['session_user_id']);
+                unset($_SESSION['session_username']);
+                $_SESSION['flash_message'] = "Your profile has been updated. Please log in again.";
+                header("Location: login.php");
+                exit();
             } else {
-                $message .= "<div class='ui positive message'><p>Nous avons pris en compte votre inscription. <a href='login.php'>Se connecter ici.</a></p></div>\n";
+                // Inscription -> page de connexion
+                $_SESSION['flash_message'] = "Account created! You can now log in.";
+                require 'base_deconnexion.php';
+                header("Location: login.php");
+                exit();
             }
-            // Optional: You can uncomment these if you want to show what was typed!
-            /*
-            $message .= "<ul>\n";
-            $message .= "<li>Nom : " . $name . "</li>\n";
-            $message .= "<li>Mail : " . $mail . "</li>\n";
-            $message .= "<li>Username : " . $username . "</li>\n";
-            $message .= "</ul>\n";
-            */
-            
         } else {
             $message_erreur .= "Erreur de la requête <strong>$requete</strong><br>\n";
             $message_erreur .= "Erreur n° " . mysqli_errno($connexion) . " : " . mysqli_error($connexion) . "<br>\n";
         }
     }
-    
-     header("Location: login.php");
 }
 
 // ***********************************************
@@ -263,7 +271,7 @@ if (!empty($message_erreur) || !(isset($_POST['inscrire']) || isset($_POST['modi
             <div class="field">
                 <?php if (isset($session_user_id)) { // Un utilisateur est connecté  ?>
                     <input type="submit" class="ui primary button" name="modifier" value="Sauvegarder">
-                    <a href="dashboard.php" class="ui basic button">Annuler</a>
+                    <a href="index.php" class="ui basic button">Annuler</a>
                 <?php } else { // Aucun utilisateur connecté   ?>
                     <input type="submit" class="ui primary button" name="inscrire" value="S'inscrire">
 

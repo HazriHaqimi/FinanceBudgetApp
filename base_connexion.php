@@ -3,8 +3,10 @@
 // Connexion à la base de données budget_financier
 //
 // Gestion d'erreur manuelle : désactivation des rapports d'erreur
-error_reporting(0); // Désactivation du rapport d'erreurs de PHP
-mysqli_report(MYSQLI_REPORT_OFF); // Désactivation du rapport d'erreur mysqli
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+mysqli_report(MYSQLI_REPORT_OFF); // on garde la gestion manuelle des erreurs SQL
 // Connexion à la base de données budget_financier
 $connexion = mysqli_connect("localhost", "root", "", "budget_financier");
 if ($connexion) {

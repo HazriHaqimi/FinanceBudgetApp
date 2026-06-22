@@ -9,6 +9,11 @@ $message_erreur = "";
 // Connexion à la base de données budget_financier
 require 'base_connexion.php';
 
+// Démarrage de la session (nécessaire pour lire les messages "flash")
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 // **********************************************
 // Traitement du formulaire
 //
@@ -21,7 +26,7 @@ if (isset($_POST['connecter'])) {
     //***************************
     // Clic sur le bouton "Se connecter" de valeur name="connecter"
     // Traitement du formulaire
-    $username = htmlspecialchars($_POST['username']);
+    $username = mysqli_real_escape_string($connexion, trim($_POST['username']));
     $password = trim($_POST['password_hash']);
 
     // Vérification de toutes les valeurs saisies
@@ -71,8 +76,8 @@ if (isset($_POST['connecter'])) {
                     $_SESSION['session_username'] = $ligne['username'];
                     $_SESSION['session_name'] = $ligne['name'];
 
-                    // Redirection vers la page index.php
-                    header('Location: dashboard.php');
+                    // Redirection vers la page principale (Dashboard)
+                    header('Location: index.php');
 
                     // Fin du script si la redirection n'a pas pu se faire
                     exit();
@@ -94,6 +99,16 @@ if (isset($_POST['connecter'])) {
 // ***********************************************
 // Déconnexion de la base de données
 require 'base_deconnexion.php';
+
+// Récupération d'un éventuel message "flash" (ex: après inscription réussie)
+if (!empty($_SESSION['flash_message'])) {
+    $message .= $_SESSION['flash_message'];
+    unset($_SESSION['flash_message']);
+}
+if (!empty($_SESSION['flash_erreur'])) {
+    $message_erreur .= $_SESSION['flash_erreur'];
+    unset($_SESSION['flash_erreur']);
+}
 
 // Construction de la page HTML
 require 'header.php';

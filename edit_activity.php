@@ -63,7 +63,7 @@ require 'header.php';
                 <label>Amount (€)</label>
                 <div class="ui left icon input">
                     <i class="euro sign icon"></i>
-                    <input type="number" step="0.01" name="amount" value="<?php echo $row['amount']; ?>" required>
+                    <input type="number" step="0.01" min="0.01" name="amount" value="<?php echo $row['amount']; ?>" required>
                 </div>
             </div>
 

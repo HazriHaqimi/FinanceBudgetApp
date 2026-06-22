@@ -9,12 +9,6 @@ $message_erreur = "";
 // Connexion à la base de données budget_financier
 require 'base_connexion.php';
 
-// **********************************************
-// **********************************************
-// Traitement du formulaire transaction
-//
-// Initialisation des variables contenant les données saisies dans le formulaire
-// et utilisées pour remplir le formulaire
 $date = "";
 $description = "";
 $category = "";
@@ -71,15 +65,30 @@ if (isset($_POST['save'])) {
         $freq_sql = "'$recurring_frequency'";     // ex: 'monthly'
     }
 
-    // Préparation du partage : on calcule la part de chaque ami,
-    // puis MA part = montant total - somme des parts des amis.
-    // (modèle "ma part" : ma transaction ne compte que ce qui est à moi)
     $split_error = false;
+
+    // Validation : le montant doit être strictement positif
+    if ((float) $amount <= 0) {
+        $message_erreur = "The amount must be greater than 0.";
+        $split_error = true;
+    }
+
+    // Validation : on ne partage que des dépenses, pas des revenus
+    if ($transaction_type === 'income' && $split_status === 'others' && !empty($_POST['friends'])) {
+        $message_erreur = "You can only split expenses, not income.";
+        $split_error = true;
+    }
+
+    // Préparation du partage : on calcule la part de chaque ami.
+    // Modèle "montant complet" : MA transaction enregistre TOUJOURS le montant
+    // total que j'ai réellement payé (ex: 50 €). Ce que les amis me doivent est
+    // suivi séparément dans la table debts, et leurs remboursements
+    // m'apparaîtront plus tard comme des revenus (+).
     $owed_map = [];
     $sum_owed = 0;
-    $tx_amount = (float) $amount;   // sans partage : le montant complet est à moi
+    $tx_amount = (float) $amount;   // toujours le montant complet payé
 
-    if ($split_status == 'others' && !empty($_POST['friends'])) {
+    if (!$split_error && $split_status == 'others' && !empty($_POST['friends'])) {
         $friends_array = array_filter(explode(',', $_POST['friends']));
         $friend_amounts = $_POST['friend_amounts'] ?? [];
         $num_friends = count($friends_array);
@@ -100,10 +109,9 @@ if (isset($_POST['save'])) {
                 . " €) cannot be more than the transaction amount ("
                 . number_format((float) $amount, 2) . " €).";
             $split_error = true;
-        } else {
-            // MA part = ce qui reste après les parts des amis
-            $tx_amount = round((float) $amount - $sum_owed, 2);
         }
+        // Note: on NE soustrait PAS les parts des amis. $tx_amount reste le
+        // montant complet (ex: 50 €) -> apparaît en -50 sur mon dashboard.
     }
 
     $tx_amount_sql = mysqli_real_escape_string($connexion, $tx_amount);
@@ -172,7 +180,7 @@ require 'messages_application.php';
                 <label>Amount (€)</label>
                 <div class="ui left icon input">
                     <i class="euro sign icon"></i>
-                    <input type="number" name="amount" placeholder="0.00" required>
+                    <input type="number" name="amount" placeholder="0.00" min="0.01" step="0.01" required>
                 </div>
             </div>
 
@@ -275,31 +283,6 @@ require 'messages_application.php';
         </div>
         <input type="submit" class="ui button" name="save" value="Save">
     </form>
-    <div class="ui tiny modal" id="addContactModal">
-        <div class="header">Add New Friend</div>
-        <div class="content">
-            <form class="ui form">
-                <div class="field">
-                    <label>Name</label>
-                    <input type="text" id="new_friend_name" placeholder="Full Name">
-                </div>
-                <div class="field">
-                    <label>Phone Number</label>
-                    <input type="tel" id="new_friend_phone" placeholder="Phone Number">
-                </div>
-                <div class="field">
-                    <label>Email</label>
-                    <input type="email" id="new_friend_email" placeholder="Email Address">
-                </div>
-            </form>
-        </div>
-        <div class="actions">
-            <div class="ui black deny button">Cancel</div>
-            <div class="ui green positive right labeled icon button">
-                Save Contact <i class="checkmark icon"></i>
-            </div>
-        </div>
-    </div>
 
     <div class="ui mini modal" id="splitDetailsModal">
         <div class="header">How much do they owe?</div>

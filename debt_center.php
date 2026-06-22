@@ -142,7 +142,14 @@ require 'messages_application.php';
                         </div>
                         <div class="extra content" style="padding-left: 0; padding-right: 0; display: flex; justify-content: space-between; align-items: center;">
                             <span><i class="calendar icon"></i> Due: <?php echo $row['due_date'] ?? 'N/A'; ?></span>
-                            <a href="send_reminder.php?debt_id=<?php echo $row['debt_id']; ?>" class="ui tiny red basic button">Send a reminder</a>
+                            <div>
+                                <a href="send_reminder.php?debt_id=<?php echo $row['debt_id']; ?>" class="ui tiny red basic button">Send a reminder</a>
+                                <form method="POST" action="delete_debt.php" style="display:inline;"
+                                      onsubmit="return confirm('Delete this debt with <?php echo htmlspecialchars($row['name'], ENT_QUOTES); ?>? Any remaining balance will be cancelled. This cannot be undone.');">
+                                    <input type="hidden" name="debt_id" value="<?php echo $row['debt_id']; ?>">
+                                    <button type="submit" class="ui tiny grey basic button"><i class="trash icon"></i> Delete</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -192,21 +199,9 @@ require 'messages_application.php';
     });
 
     document.getElementById('payOverlay').addEventListener('click', closePayModal);
-
-    // Validation : montant > 0 et <= restant dû
-    document.getElementById('payForm').addEventListener('submit', function (e) {
-        var amt = parseFloat(document.getElementById('payAmount').value);
-        var max = parseFloat(document.getElementById('payAmount').max);
-        if (isNaN(amt) || amt <= 0) {
-            e.preventDefault();
-            alert('Please enter a valid amount.');
-            return;
-        }
-        if (amt > max + 0.0001) {
-            e.preventDefault();
-            alert('You cannot pay more than the remaining amount (' + max.toFixed(2) + ' €).');
-        }
-    });
+    // La validation (champ requis, min, max) est gérée nativement par le
+    // navigateur via les attributs required / min / max de l'input,
+    // et re-vérifiée côté serveur dans pay_debt.php.
 </script>
 
 <!-- ============ MODIFY PAYMENT POPUP ============ -->
@@ -257,21 +252,9 @@ require 'messages_application.php';
     });
 
     document.getElementById('modOverlay').addEventListener('click', closeModModal);
-
-    // Validation : 0 <= nouveau montant payé <= dette totale
-    document.getElementById('modForm').addEventListener('submit', function (e) {
-        var val = parseFloat(document.getElementById('modNewPaid').value);
-        var max = parseFloat(document.getElementById('modNewPaid').max);
-        if (isNaN(val) || val < 0) {
-            e.preventDefault();
-            alert('Please enter a valid amount.');
-            return;
-        }
-        if (val > max + 0.0001) {
-            e.preventDefault();
-            alert('The amount paid cannot be more than the total debt (' + max.toFixed(2) + ' €).');
-        }
-    });
+    // La validation (champ requis, min, max) est gérée nativement par le
+    // navigateur via les attributs required / min / max de l'input,
+    // et re-vérifiée côté serveur dans modify_payment.php.
 </script>
 
 <?php

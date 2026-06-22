@@ -55,16 +55,24 @@ if ($result && mysqli_num_rows($result) == 1) {
             WHERE debt_id = $debt_id";
     mysqli_query($connexion, $upd);
 
-    // Modèle "ma part" : payer ma dette est MA dépense (c'est ma part de l'achat).
-    // -> elle apparaît dans "Recent Activity" et diminue mon "Total Balance".
-    // Le créancier ne reçoit PAS de revenu : il n'avait compté que sa propre part,
-    // il récupère simplement l'argent qu'il avait avancé (neutre pour son solde).
+    // Modèle "montant complet" :
+    // 1) Payer ma dette est MA dépense (ma part de l'achat) -> -X pour moi (débiteur).
     $pay_desc = mysqli_real_escape_string($connexion, "Payment to " . $debt['name']);
     $ins_tx = "INSERT INTO transactions
                (user_id, type, category, amount, transaction_date, is_recurring, description, split_status)
                VALUES
                ($session_user_id, 'expense', 'Debt Payment', $pay_amount, CURRENT_DATE(), 0, '$pay_desc', 'none')";
     mysqli_query($connexion, $ins_tx);
+
+    // 2) Le créancier avait enregistré le MONTANT COMPLET en dépense (ex: -50 €).
+    //    Quand je le rembourse, il récupère de l'argent : c'est un REVENU pour lui (+X).
+    //    Son outgoing reste -50, son incoming augmente du montant remboursé.
+    $income_desc = mysqli_real_escape_string($connexion, "Repayment from " . $session_username);
+    $ins_income = "INSERT INTO transactions
+                   (user_id, type, category, amount, transaction_date, is_recurring, description, split_status)
+                   VALUES
+                   ($creditor_id, 'income', 'Debt Repayment', $pay_amount, CURRENT_DATE(), 0, '$income_desc', 'none')";
+    mysqli_query($connexion, $ins_income);
 
     // Message envoyé au créancier
     $paid_fmt = number_format($pay_amount, 2);

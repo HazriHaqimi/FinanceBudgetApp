@@ -65,23 +65,33 @@ if ($result && mysqli_num_rows($result) == 1) {
                               SET remaining_amount = $new_remaining, status = '$new_status'
                               WHERE debt_id = $debt_id");
 
-    // 2) Ajustement de MON solde uniquement (modèle "ma part").
-    //    Le créancier n'est pas touché : il n'avait jamais compté cet argent
-    //    comme un revenu, il avançait juste ma part.
+    // 2) Ajustement des DEUX soldes (modèle "montant complet").
     $amt = abs($diff);
     if ($diff > 0) {
-        // J'ai payé PLUS : dépense supplémentaire pour moi
-        $my_desc = mysqli_real_escape_string($connexion, "Payment adjustment to " . $name);
-        $my_type = 'expense';
+        // J'ai payé PLUS : dépense supplémentaire pour moi (débiteur)
+        // et revenu supplémentaire pour le créancier (il récupère plus).
+        $my_desc        = mysqli_real_escape_string($connexion, "Payment adjustment to " . $name);
+        $my_type        = 'expense';
+        $creditor_type  = 'income';
+        $creditor_desc  = mysqli_real_escape_string($connexion, "Repayment adjustment from " . $session_username);
     } else {
-        // J'ai payé MOINS : remboursement -> revenu pour moi
-        $my_desc = mysqli_real_escape_string($connexion, "Refund from " . $name);
-        $my_type = 'income';
+        // J'ai payé MOINS : remboursement -> revenu pour moi (débiteur)
+        // et le créancier rend de l'argent -> dépense pour lui.
+        $my_desc        = mysqli_real_escape_string($connexion, "Refund from " . $name);
+        $my_type        = 'income';
+        $creditor_type  = 'expense';
+        $creditor_desc  = mysqli_real_escape_string($connexion, "Repayment refund to " . $session_username);
     }
 
+    // Côté débiteur (moi)
     mysqli_query($connexion, "INSERT INTO transactions
         (user_id, type, category, amount, transaction_date, is_recurring, description, split_status)
         VALUES ($session_user_id, '$my_type', 'Debt Payment', $amt, CURRENT_DATE(), 0, '$my_desc', 'none')");
+
+    // Côté créancier (miroir)
+    mysqli_query($connexion, "INSERT INTO transactions
+        (user_id, type, category, amount, transaction_date, is_recurring, description, split_status)
+        VALUES ($creditor_id, '$creditor_type', 'Debt Repayment', $amt, CURRENT_DATE(), 0, '$creditor_desc', 'none')");
 
     // 3) Message au créancier (information)
     $new_paid_fmt = number_format($new_paid, 2);

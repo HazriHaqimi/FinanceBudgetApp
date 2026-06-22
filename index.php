@@ -1,270 +1,294 @@
 <?php
-// Authentification obligatoire pour accéder à la page
 require 'authentification.php';
-
-// La variable $message contiendra les éventuels messages de l'application à afficher
+// ***********************************************
+// index.php — page principale (Dashboard)
+// ***********************************************
 $message = "";
-
-// La variable $message_erreur contiendra les éventuels messages d'erreur de l'application à afficher
 $message_erreur = "";
 
-// ***********************************************
 // Connexion à la base de données budget_financier
-//
 require 'base_connexion.php';
 
-// Si aucun message d'erreur
-if (empty($message_erreur)) {
-  //***************************************************************************
-  // ATTENTION : La page doit être construite APRES le traitement
-  // des formulaires
-  // Ainsi, les constructions :
-  //  - du formulaire d'envoi d'un message
-  //  - de la liste des derniers message
-  //  - du formulaire des demandes
-  //  - du formulaire d'invitation
-  // doivent être placées APRES les traitements des formulaires :
-  //   - d'envoi d'un messaage
-  //   - des demandes
-  //   - d'invitation
-  // afin que les éventuelles modifications des relations soient visibles
-  // après appui sur les boutons correspondants
-  //***************************************************************************
-  //
-  //
-  //***************************************************************************
-  //   Traitement des formulaires
-  //***************************************************************************
-  //
-  // **********************************************
-  // Traitement du formulaire d'envoi d'un message
-  //
-  // La variable $id_expediteur contient l'identifiant de l'utilisateur connecté
-  $id_expediteur = $session_idutilisateur;
-  
-  // Initialisation des variables contenant les données saisies dans le formulaire
-  $id_destinataire = "";
-  $message_a_envoyer = "";
 
-  if (isset($_POST['envoyer'])) {
-    //***************************
-    // Clic sur le bouton "Envoyer" de valeur name="envoyer"
-    // Traitement du formulaire d'envoi de message
-    $id_destinataire = $_POST['id_destinataire'];
-    $message_a_envoyer = $_POST['message_a_envoyer'];
-
-    // Vérification de la validité des valeurs saisies
-
-    if (empty($id_destinataire)) {
-      $message_erreur .= "Le champ destinataire est obligatoire<br>\n";
-    } elseif (!ctype_digit($id_destinataire)) {
-      $message_erreur .= "L'identifiant $id_destinataire n'est pas valide<br>\n";
-    }
-
-    // Si aucun message d'erreur
-    if (empty($message_erreur)) {
-      //*******************************************
-      // Saisie des données du formulaire dans la table message
-      // après verification que l'identifiant du destinataire est 
-      // bien ami avec le destinataire
-      //
-      $requete = "select *
-                from relation
-                where IdDemandeur = $id_expediteur
-                  and IdAmi = $id_destinataire
-                  and RelationAccepte = true";
-      $resultat = mysqli_query($connexion, $requete);
-      if ($resultat) {
-        // Vérification du nombre de lignes du résultat
-        if (mysqli_num_rows($resultat) == 0) {
-          // $id_destinataire n'est pas ami avec $id_expediteur
-          $message_erreur .= "Impossible d'envoyer un message à ce destinataire<br>\n";
-        }
-      } else {
-        $message_erreur .= "Erreur de la requête $requete<br>\n";
-        $message_erreur .= "Erreur n° " . mysqli_errno($connexion) . " : " . mysqli_error($connexion) . "<br>\n";
-      }
-    }
-
-    // Si aucun message d'erreur
-    if (empty($message_erreur)) {
-      // Requête d'insertion du message dans la table message
-      $requete = "insert into message values"
-              . "(null, $id_expediteur, $id_destinataire, current_timestamp(),"
-              . " \"$message_a_envoyer\");";
-
-      // Exécution de la requête
-      $resultat = mysqli_query($connexion, $requete);
-      if ($resultat) {
-        // Affiche un message de confirmation de l'envoi du message
-        $message .= "Message envoyé<br>\n";
-      } else {
-        $message_erreur .= "Erreur de la requête <strong>$requete</strong><br>\n";
-        $message_erreur .= "Erreur n° " . mysqli_errno($connexion) . " : " . mysqli_error($connexion) . "<br>\n";
-      }
-    }
-  }
-
-  // **********************************************
-  // Traitement du formulaire des demandes
-  //
-  //  A FAIRE
-  //
-  // **********************************************
-  // Traitement du formulaire d'invitation
-  //
-  //  A FAIRE
-  //
-  //***************************************************************************
-  //   Construction de la page
-  //***************************************************************************
-  //
-  // **********************************************
-  // Construction du formulaire d'envoi d'un message
-  // 
-  // La variable $liste_deroulante_destinataires contient la liste déroulante des destinataires
-  $liste_deroulante_destinataires = "";
-
-  // Construction de la liste déroulante
-  // des destinataires potentiels du message à envoyer
-  // = liste des "amis" de l'expéditeur
-  //  
-  // Requête d'extraction de la liste des "amis" de l'expéditeur
-  $requete = "select IdAmi, Nom, Prenom, Pseudo
-              from relation inner join utilisateur on IdUtilisateur = IdAmi
-              where IdDemandeur = $id_expediteur and RelationAccepte = true
-              order by Nom, Prenom;";
-
-// Exécution de la requête
-  $resultat = mysqli_query($connexion, $requete);
-  if ($resultat) {
-    // Vérification du nombre de lignes du résultat
-    if (mysqli_num_rows($resultat) == 0) {
-      // Aucun destinataire
-      $liste_deroulante_destinataires = "";
-    } else {
-      // Récupération des lignes du résultat de la requête
-      while ($ligne = mysqli_fetch_assoc($resultat)) {
-        // Utilisation des données de chaque ligne pour créer un élément de la liste
-        $liste_deroulante_destinataires .= "<option value=\"" . $ligne['IdAmi']
-                . "\">" . strtoupper($ligne['Nom']) . " "
-                . $ligne['Prenom']. ' (' . $ligne['Pseudo']
-                . ")</option>\n";
-      }
-    }
-  } else {
-    $message_erreur .= "Erreur de la requête <strong>$requete</strong><br>\n";
-    $message_erreur .= "Erreur n° " . mysqli_errno($connexion) . " : " . mysqli_error($connexion) . "<br>\n";
-  }
-
-  // **********************************************
-  // Construction de la liste des derniers messages
-  //
-  //
-  //  A FAIRE
-  //  
-  // **********************************************
-  // Construction du formulaire des demandes
-  //
-  //  A FAIRE
-  //  
-  // **********************************************
-  // Construction du formulaire d'invitation
-  //
-  //  A FAIRE
+// Mois / année sélectionnés (par défaut : mois et année en cours)
+$selected_month = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+$selected_year  = isset($_GET['year'])  ? (int)$_GET['year']  : (int)date('Y');
+// Sécurité : on borne les valeurs
+if ($selected_month < 1 || $selected_month > 12) {
+    $selected_month = (int)date('m');
+}
+if ($selected_year < 2000 || $selected_year > 2100) {
+    $selected_year = (int)date('Y');
 }
 
-// ***********************************************
+// Liste des mois pour le menu déroulant
+$month_names = [
+    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+];
+$selected_period_label = $month_names[$selected_month] . ' ' . $selected_year;
+
+// Plage de dates pour le graphique (toujours les 30 derniers jours, indépendant du filtre)
+$chart_range_label = date('M j', strtotime('-30 days')) . ' – ' . date('M j, Y');
+
+// Valeurs par défaut
+$total_income = 0;
+$total_expenses = 0;
+$total_balance = 0;
+$total_monthly_expenses = 0;
+$result_recent_activities = null;
+$upcoming_bills = [];
+$graph_dates = [];
+$graph_amounts = [];
+
+// A) Solde : revenus - dépenses
+$requete_income = "SELECT SUM(amount) AS total FROM transactions
+                   WHERE user_id='$session_user_id' AND type='income'
+                   AND MONTH(transaction_date) = $selected_month
+                   AND YEAR(transaction_date) = $selected_year";
+$result_income = mysqli_query($connexion, $requete_income);
+$row_income = mysqli_fetch_assoc($result_income);
+$total_income = $row_income['total'] ?? 0;
+
+$requete_exp = "SELECT SUM(amount) AS total FROM transactions
+                WHERE user_id='$session_user_id' AND type='expense'
+                AND MONTH(transaction_date) = $selected_month
+                AND YEAR(transaction_date) = $selected_year";
+$result_exp = mysqli_query($connexion, $requete_exp);
+$row_exp = mysqli_fetch_assoc($result_exp);
+$total_expenses = $row_exp['total'] ?? 0;
+
+$total_balance = $total_income - $total_expenses;
+
+// B) Dépenses du mois en cours 
+$requete_monthly = "SELECT SUM(amount) AS total FROM transactions
+                    WHERE user_id='$session_user_id'
+                    AND type='expense'
+                    AND MONTH(transaction_date) = $selected_month
+                    AND YEAR(transaction_date) = $selected_year";
+$result_monthly = mysqli_query($connexion, $requete_monthly);
+$row_monthly = mysqli_fetch_assoc($result_monthly);
+$total_monthly_expenses = $row_monthly['total'] ?? 0;
+
+// C) Activités récentes
+$requete_recent_activities = "SELECT transaction_date, description, amount, category
+                              FROM transactions
+                              WHERE user_id='$session_user_id'
+                              ORDER BY transaction_date DESC, transaction_id DESC LIMIT 5";
+$result_recent_activities = mysqli_query($connexion, $requete_recent_activities);
+
+// D) Factures récurrentes à venir : on calcule la prochaine échéance
+$requete_upcoming = "SELECT transaction_date, description, amount, recurring_frequency
+                     FROM transactions
+                     WHERE user_id='$session_user_id' AND is_recurring = 1
+                     ORDER BY transaction_date ASC";
+$result_upcoming = mysqli_query($connexion, $requete_upcoming);
+if ($result_upcoming) {
+    $today = new DateTime(date('Y-m-d'));
+    while ($row = mysqli_fetch_assoc($result_upcoming)) {
+        $next = new DateTime($row['transaction_date']);
+        $interval = null;
+        switch ($row['recurring_frequency']) {
+            case 'daily':   $interval = 'P1D'; break;
+            case 'weekly':  $interval = 'P1W'; break;
+            case 'monthly': $interval = 'P1M'; break;
+            case 'yearly':  $interval = 'P1Y'; break;
+        }
+        if ($interval) {
+            while ($next < $today) {
+                $next->add(new DateInterval($interval));
+            }
+        }
+        $row['next_due'] = $next->format('Y-m-d');
+        $upcoming_bills[] = $row;
+    }
+    usort($upcoming_bills, fn($a, $b) => strcmp($a['next_due'], $b['next_due']));
+    $upcoming_bills = array_slice($upcoming_bills, 0, 5);
+}
+
+// E) Graphique : dépenses des 30 derniers jours
+$requete_graph = "SELECT transaction_date, SUM(amount) as daily_total
+                  FROM transactions
+                  WHERE user_id = '$session_user_id'
+                  AND type = 'expense'
+                  AND transaction_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+                  GROUP BY transaction_date
+                  ORDER BY transaction_date ASC";
+$result_graph = mysqli_query($connexion, $requete_graph);
+if ($result_graph) {
+    while ($row = mysqli_fetch_assoc($result_graph)) {
+        $graph_dates[]   = $row['transaction_date'];
+        $graph_amounts[] = $row['daily_total'];
+    }
+}
+
 // Déconnexion de la base de données
 require 'base_deconnexion.php';
 
+// Récupération d'un éventuel message "flash"
+if (!empty($_SESSION['flash_message'])) {
+    $message .= $_SESSION['flash_message'];
+    unset($_SESSION['flash_message']);
+}
+if (!empty($_SESSION['flash_erreur'])) {
+    $message_erreur .= $_SESSION['flash_erreur'];
+    unset($_SESSION['flash_erreur']);
+}
+
 // Construction de la page HTML
 require 'header.php';
-
-// Affichage des éventuels messages de l'application
 require 'messages_application.php';
 ?>
-<!-- **************************************** -->                 
-<!-- Formulaire d'envoi de message            -->
-<div class="ui segment">
-  <h1 class="ui header">Envoyer un message</h1>
-  <div class="ui divider"></div>
-  <form class="ui form" action="" method="POST">
-    <div class="field">
-      <label>Destinataire</label>
-      <select class="ui dropdown" name="id_destinataire">
-<?php echo empty($liste_deroulante_destinataires) ? "<option disabled>Aucun destinataire</option>\n" : $liste_deroulante_destinataires ?>
-      </select>
-    </div>
-    <div class="ui field">
-      <label>Message</label>
-      <textarea rows="4" name="message_a_envoyer"></textarea>
-    </div>
-    <input type="submit" class="ui button" name="envoyer" value="Envoyer" <?php echo empty($liste_deroulante_destinataires) ? "disabled" : ""; ?> >
-  </form>
-</div>               
-<!-- **************************************** -->      
 
-<!-- **************************************** -->
-<!-- Liste des derniers messages              -->
-<!--                                          -->
-<!--  A MODIFIER                              -->
-<!--                                          -->
-<div class="ui segment">
-  <h1 class="ui header"> Derniers messages </h1>
-  <div class="ui segment">
-    <h4 class="ui header">
-      De admin à faceless, le 2026-03-05 13:27:42              </h4>
-    <p>John DOE (johndoe) aimerait être ami avec vous.</p>
-  </div>  
-  <div class="ui segment">
-    <h4 class="ui header">
-      De faceless à bartsim, le 2026-02-15 14:53:00              </h4>
-    <p>Super tout fonctionne ! Enfin je parle de la partie corrigée par nos enseignants ! </p>
-  </div>  
-  <div class="ui segment">
-    <h4 class="ui header">
-      De bartsim à faceless, le 2026-02-15 14:50:00              </h4>
-    <p>Bonjour, je tente de faire fonctionner cette super application que nous développons en LO07. </p>
-  </div>  
-</div>
-<!-- **************************************** -->                
+<div class="ui container">
+    <h2 class="ui header">
+        <i class="chart pie icon"></i>
+        <div class="content">
+            Dashboard
+            <div class="sub header">Welcome back <strong><?php echo htmlspecialchars($session_username) ?></strong> ! Here is your financial overview.</div>
+        </div>
+    </h2>
 
-<!-- **************************************** -->                 
-<!-- Formulaire d'acceptation d'un nouvel ami -->
-<!--                                          -->
-<!--  A MODIFIER                              -->
-<!--                                          -->
-<div class="ui segment">
-  <h1 class="ui header"> Liste des demandes </h1>
-  <div class="ui segment">
-    <form class="ui form" action="index.php" method="POST"> 
-      John DOE (johndoe) vous demande en ami. 
-      <input type="hidden" name="id_relation" value="15">                  
-      <input type="hidden" name="pseudo_demandeur" value="johndoe">
-      <input type="hidden" name="id_demandeur" value="9">
-      <input type="submit" class="ui button right floated" name="accepter" value="Accepter">
-      <input type="submit" class="ui button right floated" name="refuser" value="Refuser">
+    <form method="get" action="index.php" class="ui form" style="margin-bottom: 1em;">
+        <div class="inline fields">
+            <div class="field">
+                <label>Month</label>
+                <select name="month" class="ui dropdown">
+                    <?php foreach ($month_names as $num => $name): ?>
+                        <option value="<?php echo $num; ?>" <?php echo $num === $selected_month ? 'selected' : ''; ?>>
+                            <?php echo $name; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="field">
+                <label>Year</label>
+                <select name="year" class="ui dropdown">
+                    <?php for ($y = (int)date('Y'); $y >= (int)date('Y') - 4; $y--): ?>
+                        <option value="<?php echo $y; ?>" <?php echo $y === $selected_year ? 'selected' : ''; ?>>
+                            <?php echo $y; ?>
+                        </option>
+                    <?php endfor; ?>
+                </select>
+            </div>
+            <div class="field">
+                <button type="submit" class="ui primary button">View</button>
+            </div>
+        </div>
     </form>
-  </div>
-</div>
-<!-- **************************************** -->
 
-<!-- **************************************** -->                 
-<!-- Formulaire d'invitation                  -->
-<!--                                          -->
-<!--  A MODIFIER                              -->
-<!--                                          -->
-<div class="ui segment">
-  <h1 class="ui header"> Invitation </h1>
-  <form class="ui form" action="index.php" method="POST">
-    <div class="field">
-      <select class="ui dropdown" name="id_invite">
-        <option value="6">WHITE Walter</option>
-      </select>
+    <div class="ui stackable grid">
+
+        <div class="two column row">
+            <div class="eight wide column">
+                <div class="ui segment">
+                    <h3 class="ui header">Total Balance <small>(<?php echo $selected_period_label; ?>)</small></h3>
+                    <h1 class="ui <?php echo $total_balance < 0 ? 'red' : 'green'; ?> header"><?php echo number_format($total_balance, 2) ?> €</h1>
+                </div>
+            </div>
+            <div class="eight wide column">
+                <div class="ui segment">
+                    <h3 class="ui header">Incoming vs Outgoing <small>(<?php echo $selected_period_label; ?>)</small></h3>
+                    <p><i class="arrow up green icon"></i> <?php echo number_format($total_income, 2) ?> €</p>
+                    <p><i class="arrow down red icon"></i> <?php echo number_format($total_expenses, 2) ?> €</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="sixteen wide column">
+                <div class="ui segment">
+                    <h3 class="ui header">
+                        Spending Trends — Last 30 Days
+                        <div class="sub header"><?php echo $chart_range_label; ?> (always current, ignores the filter above)</div>
+                    </h3>
+                    <div>
+                        <canvas id="spendingChart" height="100"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="two column row">
+            <div class="eight wide column">
+                <div class="ui segment">
+                    <h3 class="ui header">Recent Activity</h3>
+                    <div class="ui relaxed divided list">
+                        <?php
+                        if ($result_recent_activities && mysqli_num_rows($result_recent_activities) > 0) {
+                            while ($row = mysqli_fetch_assoc($result_recent_activities)) {
+                                ?>
+                                <div class="item">
+                                    <i class="large money bill alternate outline middle aligned icon"></i>
+                                    <div class="content">
+                                        <a class="header"><?php echo htmlspecialchars($row['transaction_date'] . " - " . $row['description']); ?></a>
+                                        <div class="description"><?php echo $row['amount']; ?> € - <?php echo htmlspecialchars($row['category']); ?></div>
+                                    </div>
+                                </div>
+                                <?php
+                            }
+                        } else {
+                            echo "<p>No recent activities found.</p>";
+                        }
+                        ?>
+                    </div>
+                </div>
+            </div>
+            <div class="eight wide column">
+                <div class="ui segment">
+                    <h3 class="ui header">
+                        <i class="calendar alternate outline icon"></i>
+                        <div class="content">Upcoming Recurring Bills</div>
+                    </h3>
+                    <div class="ui relaxed divided list">
+                        <?php if (count($upcoming_bills) > 0): ?>
+                            <?php foreach ($upcoming_bills as $row): ?>
+                                <div class="item">
+                                    <i class="large red clock outline middle aligned icon"></i>
+                                    <div class="content">
+                                        <div class="header"><?php echo htmlspecialchars($row['description']); ?></div>
+                                        <div class="description">
+                                            <strong><?php echo $row['amount']; ?> €</strong>
+                                            <br>Due: <?php echo $row['next_due']; ?>
+                                            <br><small><?php echo ucfirst($row['recurring_frequency'] ?? ''); ?></small>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="ui positive message">You have no upcoming bills!</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <input type="submit" class="ui button" name="inviter" value="Inviter">
-  </form>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const chartDates = <?php echo json_encode($graph_dates); ?>;
+        const chartAmounts = <?php echo json_encode($graph_amounts); ?>;
+        const ctx = document.getElementById('spendingChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartDates,
+                datasets: [{
+                    label: 'Daily Expenses (€)',
+                    data: chartAmounts,
+                    borderColor: '#2185d0',
+                    backgroundColor: 'rgba(33, 133, 208, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+    </script>
 </div>
-<!-- **************************************** -->  
-<?php require 'footer.php' ?>
+
+<?php
+require 'footer.php';
+?>

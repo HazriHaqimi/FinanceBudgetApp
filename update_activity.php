@@ -26,6 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_SESSION['session_user_id']))
         exit();
     }
 
+    // Garde-fou : le montant doit être strictement positif
+    if ((float) $amount <= 0) {
+        $_SESSION['flash_erreur'] = "The amount must be greater than 0.";
+        header("Location: transaction.php");
+        exit();
+    }
+
     // 2. The UPDATE Query
     // We say: Update the transactions table, SET these specific columns to the new values,
     // WHERE the ID matches the hidden input from our form.

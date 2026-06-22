@@ -27,7 +27,7 @@ if (isset($_SESSION['session_user_id'])) {
    
     <div class="app-layout">
         <div class="ui inverted fixed menu">
-            <div class="item"><strong><a href="dashboard.php">Budget Financier</a></strong></div>
+            <div class="item"><strong><a href="index.php">Budget Financier</a></strong></div>
             
             
               <?php //Si l'utilisateur n'est pas encore connecte
@@ -40,7 +40,7 @@ if (isset($_SESSION['session_user_id'])) {
                 <?php }
                 
                 else { ?>
-                    <a class="item" href="dashboard.php">Dashboard</a>
+                    <a class="item" href="index.php">Dashboard</a>
                     <a class="item" href="transaction.php">Transaction</a>
                     <a class="item" href="debt_center.php">Debt Center</a>
                     <!--<a class="item" href="contacts.php">Contacts</a>-->
